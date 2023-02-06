@@ -32,7 +32,7 @@ class Die:
         """ Applies a flat modifier by addition or subtraction to a die expression.
             Valid operators include '+' and '-'.
 
-            Currently does not simplify expression or intelligently choose output type.
+            Currently does not simplify expression.
             """
         self.expression = self.expression + op + f"{mod}"
         if op == '+':
