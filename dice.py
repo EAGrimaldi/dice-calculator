@@ -117,15 +117,6 @@ def composeDice(dieA: Die, dieB: Die, op: str='+') -> Die:
     ex = dieA.expression + op + dieB.expression
     return Die(vals, probs, ex)
 
-# TODO core functionality
-# intelligent expression updates
-# expression simplifier
-# expression compiler
-#
-# TODO extended dice mechanics
-# keep highest/lowest x in pool
-# reroll highest/lowest x in pool
-# successes over/under x in pool
 
 if __name__ == "__main__":
     test = DicePool(8, 100)
