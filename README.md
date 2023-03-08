@@ -9,9 +9,11 @@ This tool takes arbitrary dice roll expressions and outputs information such as 
 Its kinda half finished right now. Use at your own risk.
 
 ## core functionality
+* expression compiler
+
+## qol functionality
 * intelligent expression updates
 * expression simplifier
-* expression compiler
 
 ## extended dice mechanics
 * keep highest/lowest x in pool
