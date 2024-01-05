@@ -8,27 +8,27 @@ class RunInPlace:
     """Helper class for making list comprehensions of running sums in O(n) time"""
     def __init__(self, value: float = 0):
         self.value = value
-    def runningSum(self, newValue: float) -> float:
-        self.value += newValue
+    def running_sum(self, new_value: float) -> float:
+        self.value += new_value
         return self.value
 
 class AnyDie:
     expression = ""
     values = np.array([])
     probabilities = np.array([])
-    probabilitiesAtMost = np.array([])
-    probabilitiesAtLeast = np.array([])
+    probabilities_at_most = np.array([])
+    probabilities_at_least = np.array([])
     def __init__(self, values: np.ndarray, probabilities: np.ndarray, expression: str) -> None:
         self.expression = expression
         self.values = values
         self.probabilities = probabilities
         self.__init_other_probs__()
     def __init_other_probs__(self) -> None:
-        """Calculates probabilitiesAtMost as an integral of probabilities, and probabilitiesAtLeast as a compliment of probabilitiesAtMost."""
+        """Calculates probabilities_at_most as an integral of probabilities, and probabilities_at_least as a compliment of probabilities_at_most."""
         tempSum = RunInPlace()
-        self.probabilitiesAtMost = np.array([tempSum.runningSum(probability) for probability in self.probabilities])
-        self.probabilitiesAtLeast = np.ones(self.probabilitiesAtMost.shape) - self.probabilitiesAtMost + self.probabilitiesAtMost[0]
-    def applyModifier(self, modifier: int, operator: str='+') -> None:
+        self.probabilities_at_most = np.array([tempSum.running_sum(probability) for probability in self.probabilities])
+        self.probabilities_at_least = np.ones(self.probabilities_at_most.shape) - self.probabilities_at_most + self.probabilities_at_most[0]
+    def apply_modifier(self, modifier: int, operator: str='+') -> None:
         """ Applies a flat modifier by addition or subtraction to a die expression.
             Valid operators include '+' and '-'.
 
@@ -46,8 +46,8 @@ class AnyDie:
         mode = regex.sub("", mode).lower()
         mode2data = {
             "normal": self.probabilities,
-            "atmost": self.probabilitiesAtMost,
-            "atleast": self.probabilitiesAtLeast
+            "atmost": self.probabilities_at_most,
+            "atleast": self.probabilities_at_least
         }
         if mode not in mode2data:
             raise KeyError("Invalid mode. Valid modes include 'normal', 'at most', 'at least'.")
@@ -95,29 +95,29 @@ class DicePool(AnyDie):
             We use this relationship to minimize the number of convolutions used in our calculation.
             Successive convolutions can quickly blow up the number of matrix operations in your calculation.
         """
-        convDict = {1: np.ones(self.size)/self.size}
-        convHighway = [1] if self.number%2 else []
+        conv_dict = {1: np.ones(self.size)/self.size}
+        conv_highway = [1] if self.number%2 else []
         bit = 2
         while bit <= self.number:
-            convDict[bit] = np.convolve(convDict[bit/2], convDict[bit/2])
+            conv_dict[bit] = np.convolve(conv_dict[bit/2], conv_dict[bit/2])
             if self.number & bit:
-                convHighway.append(bit)
+                conv_highway.append(bit)
             bit *= 2
-        result = convDict[convHighway[0]]
-        if len(convHighway) > 1:
-            for i in convHighway[1:]:
-                result = np.convolve(result, convDict[i])
+        result = conv_dict[conv_highway[0]]
+        if len(conv_highway) > 1:
+            for i in conv_highway[1:]:
+                result = np.convolve(result, conv_dict[i])
         return result
 
 class AdvantagePool(AnyDie):
-    def __init__(self, size: int, totalNumber: int=2, keepNumber: int=1, mode: str='h') -> None:
+    def __init__(self, size: int, total_number: int=2, keep_number: int=1, mode: str='h') -> None:
         if size < 2:
             raise ValueError("The size of the dice must be greater than 1.")
-        if totalNumber < 2:
+        if total_number < 2:
             raise ValueError("The total number of dice in the pool must be greater than 1.")
-        if keepNumber > totalNumber:
+        if keep_number > total_number:
             raise ValueError("The number of dice kept must be less than the total number of dice in the pool.")
-        if keepNumber == totalNumber:
+        if keep_number == total_number:
             raise ValueError("If the number of dice kept is the same as the total number of dice in the pool, then you should use the simple DicePool object.")
         regex = re.compile("[^a-zA-Z]")
         mode = regex.sub("", mode).lower()
@@ -125,12 +125,12 @@ class AdvantagePool(AnyDie):
         if mode not in {'h', 'l'}:
             raise KeyError("Invalid mode. Valid modes include 'h' (keep highest) and 'l' (keep lowest).")
         self.size = size
-        self.totalNumber = totalNumber
-        self.keepNumber = keepNumber
+        self.total_number = total_number
+        self.keep_number = keep_number
         self.mode = mode
-        self.expression = f"{self.totalNumber}d{self.size}k{self.mode}{self.keepNumber}"
-        self.values = np.array([i for i in range(self.keepNumber, self.keepNumber*self.size+1)])
-        self.probabilities = self.__advantage_formula__() if self.keepNumber == 1 else self.__advantage_statistics__()
+        self.expression = f"{self.total_number}d{self.size}k{self.mode}{self.keep_number}"
+        self.values = np.array([i for i in range(self.keep_number, self.keep_number*self.size+1)])
+        self.probabilities = self.__advantage_formula__() if self.keep_number == 1 else self.__advantage_statistics__()
         self.__init_other_probs__()
     def __advantage_formula__(self) -> np.ndarray:
         """ Helper function for building the probability mass function of an advantage or disadvantage dice pool (NdSkh1 or NdSkl1).
@@ -144,9 +144,9 @@ class AdvantagePool(AnyDie):
             Neat!
         """
         if self.mode == 'h':
-            result = np.array([ (i**self.totalNumber - (i-1)**self.totalNumber) / (self.size**self.totalNumber) for i in range(1,self.size+1) ])
+            result = np.array([ (i**self.total_number - (i-1)**self.total_number) / (self.size**self.total_number) for i in range(1,self.size+1) ])
         else:
-            result = np.array([ (i**self.totalNumber - (i-1)**self.totalNumber) / (self.size**self.totalNumber) for i in range(self.size,0,-1) ])
+            result = np.array([ (i**self.total_number - (i-1)**self.total_number) / (self.size**self.total_number) for i in range(self.size,0,-1) ])
         return result
     def __advantage_statistics__(self) -> np.ndarray:
         """ Helper function for building the probability mass function of rolling N dice of size S and keeping and summing the highest or lowest K results.
@@ -159,37 +159,37 @@ class AdvantagePool(AnyDie):
             print("woops!") # TODO please implement this bit lol
         return result
 
-def isRealDie(size: int) -> bool:
-    realDiceSet = {2, 4, 6, 8, 10, 12, 20, 100}
-    if size in realDiceSet:
+def is_real_die(size: int) -> bool:
+    real_dice_set = {2, 4, 6, 8, 10, 12, 20, 100}
+    if size in real_dice_set:
         return True
     else:
-        warnings.warn(f"{size} is an impractical size for real dice. \nIf you are designing for tabletop play, you should probably choose from {realDiceSet}")
+        warnings.warn(f"{size} is an impractical size for real dice. \nIf you are designing for tabletop play, you should probably choose from {real_dice_set}")
         return False
 
-def composeDice(dieA: AnyDie, dieB: AnyDie, operator: str='+') -> AnyDie:
+def compose_dice(die0: AnyDie, die1: AnyDie, operator: str='+') -> AnyDie:
     """ Composes two arbitrary dice expressions by addition or subtraction into one meta die.
         Valid operators include '+' and '-'.
 
         Currently does not simplify expression or intelligently choose output type.
     """
-    probabilities = np.convolve(dieA.probabilities, dieB.probabilities)
+    probabilities = np.convolve(die0.probabilities, die1.probabilities)
     if operator == '+':
-        values = np.array([i for i in range(dieA.values[0] + dieB.values[0], dieA.values[-1] + dieB.values[-1] + 1)])
+        values = np.array([i for i in range(die0.values[0] + die1.values[0], die0.values[-1] + die1.values[-1] + 1)])
     elif operator == '-':
-        values = np.array([i for i in range(dieA.values[0] - dieB.values[-1], dieA.values[-1] - dieB.values[0] + 1)])
+        values = np.array([i for i in range(die0.values[0] - die1.values[-1], die0.values[-1] - die1.values[0] + 1)])
     else:
         raise Exception("Invalid operation. Valid operations include '+' and '-'.")
-    expression = dieA.expression + operator + dieB.expression
+    expression = die0.expression + operator + die1.expression
     return AnyDie(values, probabilities, expression)
 
 
 if __name__ == "__main__":
-    test0 = AdvantagePool(size=20, totalNumber=2, mode='h')
+    test0 = AdvantagePool(size=20, total_number=2, mode='h')
     test0.graph(mode="normal")
-    test1 = AdvantagePool(size=20, totalNumber=2, mode='l')
+    test1 = AdvantagePool(size=20, total_number=2, mode='l')
     test1.graph(mode="normal")
-    test2 = AdvantagePool(size=6, totalNumber=4, mode='h')
+    test2 = AdvantagePool(size=6, total_number=4, mode='h')
     test2.graph(mode="normal")
-    test3 = AdvantagePool(size=6, totalNumber=4, mode='l')
+    test3 = AdvantagePool(size=6, total_number=4, mode='l')
     test3.graph(mode="normal")
