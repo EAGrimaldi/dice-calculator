@@ -62,6 +62,7 @@ class SingleDie(AnyDie):
         if size < 2:
             raise ValueError("The size of the die must be greater than 1.")
         self.size = size
+        self.number = 1
         self.expression = f"1d{self.size}"
         self.values = np.array([i for i in range(1,self.size+1)])
         self.probabilities = np.ones(self.size)/self.size
@@ -120,8 +121,11 @@ class AdvantagePool(AnyDie):
         if keep_number == total_number:
             raise ValueError("If the number of dice kept is the same as the total number of dice in the pool, then you should use the simple DicePool object.")
         regex = re.compile("[^a-zA-Z]")
-        mode = regex.sub("", mode).lower()
-        mode = mode[4] if mode[0:4] == 'keep' else mode[1] if mode[0] == 'k' else mode[0]
+        mode = regex.sub("", mode).lower() # strip white space, force lowercase
+        mode = mode[4] if mode[0:4] == 'keep' else mode[1] if mode[0] == 'k' else mode[0] # this looks weird but lemme explain:
+        # if mode is entered as "keep highest", the space gets removed, and we find "h" at mode[4]
+        # if mode is entered as "kh", we find "h" at mode[1]
+        # we wrote it this way to support notation commonly used in virtual table tops
         if mode not in {'h', 'l'}:
             raise KeyError("Invalid mode. Valid modes include 'h' (keep highest) and 'l' (keep lowest).")
         self.size = size
@@ -149,7 +153,7 @@ class AdvantagePool(AnyDie):
             result = np.array([ (i**self.total_number - (i-1)**self.total_number) / (self.size**self.total_number) for i in range(self.size,0,-1) ])
         return result
     def __advantage_statistics__(self) -> np.ndarray:
-        """ Helper function for building the probability mass function of rolling N dice of size S and keeping and summing the highest or lowest K results.
+        """ Helper function for building the probability mass function of rolling N dice of size S and keeping and summing the highest or lowest K results where K is greater than 1.
 
             We use simple statistics. We have not yet found the formula for this process. If you work it out, let us know!
         """
@@ -170,6 +174,18 @@ def is_real_die(size: int) -> bool:
 def compose_dice(die0: AnyDie, die1: AnyDie, operator: str='+') -> AnyDie:
     """ Composes two arbitrary dice expressions by addition or subtraction into one meta die.
         Valid operators include '+' and '-'.
+    
+        If both dice expressions are single dice or simple dice pools which share a size, intelligently chooses output type with simplified expression.
+    """
+    simplifiable_types = {SingleDie, DicePool}
+    if operator == '+' and isinstance(die0, simplifiable_types) and isinstance(die1, simplifiable_types):
+        if die0.size == die1.size:
+            return DicePool(die0.size, die0.number + die1.number)
+    return compose_arbitrary_dice(die0, die1, operator)
+
+def compose_arbitrary_dice(die0: AnyDie, die1: AnyDie, operator: str='+') -> AnyDie:
+    """ Composes two arbitrary dice expressions by addition or subtraction into one meta die.
+        Valid operators include '+' and '-'.
 
         Currently does not simplify expression or intelligently choose output type.
     """
@@ -183,13 +199,10 @@ def compose_dice(die0: AnyDie, die1: AnyDie, operator: str='+') -> AnyDie:
     expression = die0.expression + operator + die1.expression
     return AnyDie(values, probabilities, expression)
 
-
 if __name__ == "__main__":
-    test0 = AdvantagePool(size=20, total_number=2, mode='h')
-    test0.graph(mode="normal")
-    test1 = AdvantagePool(size=20, total_number=2, mode='l')
-    test1.graph(mode="normal")
-    test2 = AdvantagePool(size=6, total_number=4, mode='h')
-    test2.graph(mode="normal")
-    test3 = AdvantagePool(size=6, total_number=4, mode='l')
-    test3.graph(mode="normal")
+    pool0 = DicePool(size=6, number=5)
+    pool1 = DicePool(size=6, number=3)
+    pool2 = DicePool(size=6, number=2)
+    pool3 = compose_dice(pool0, pool1, '-')
+    pool2.graph()
+    pool3.graph()
